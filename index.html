@@ -11,7 +11,8 @@
         
         :root {
             --bg-dark: #09090b;
-            --bg-sidebar: #111114;
+            --bg-panel: #111114;
+            --bg-chart: #18181b; 
             --border: #27272a;
             --accent: #3b82f6;
         }
@@ -30,307 +31,422 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
 
+        /* 下拉选择框主题化 */
         select {
             appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a1a1aa' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-color: transparent !important;
+            color: #e4e4e7;
+            padding: 4px 24px 4px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            outline: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2371717a' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
             background-repeat: no-repeat;
-            background-position: right 0.5rem center;
-            background-size: 1.5em 1.5em;
+            background-position: right center;
+            background-size: 1.1em 1.1em;
+            transition: color 0.2s;
+        }
+        select:hover { color: var(--accent); }
+
+        .matrix-table th { font-weight: 800; color: #52525b; text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; padding-bottom: 12px; }
+        .matrix-table td { padding: 10px 0; border-bottom: 1px solid #1f1f23; }
+        
+        .indicator-pill { cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); user-select: none; }
+        .indicator-pill.inactive { opacity: 0.25; filter: grayscale(1); background-color: transparent !important; border-color: transparent !important; }
+        
+        .period-btn { transition: all 0.2s ease; border: 1px solid transparent; }
+        .period-btn.active { background-color: #27272a; color: white; border-color: #3f3f46; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .select-group {
+            display: flex;
+            align-items: center;
+            background-color: #111114;
+            border: 1px solid #27272a;
+            border-radius: 6px;
+            padding: 0 4px;
+        }
+        .select-label {
+            font-size: 9px;
+            font-weight: 800;
+            color: #52525b;
+            text-transform: uppercase;
+            padding: 0 8px;
+            border-right: 1px solid #1f1f23;
+            letter-spacing: 0.025em;
         }
     </style>
 </head>
 <body class="h-screen flex flex-col">
 
     <!-- 顶部导航 -->
-    <header class="h-14 border-b border-zinc-800 bg-[#111114] flex items-center justify-between px-6 z-20">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-black text-white italic">V</div>
-            <div>
-                <h1 class="text-sm font-bold tracking-wider">VOL LAB PRO</h1>
-                <p class="text-[10px] text-zinc-500 uppercase tracking-widest">Quantum Analysis Terminal</p>
+    <header class="h-14 border-b border-zinc-800 bg-[#09090b] flex items-center justify-between px-6 z-20">
+        <div class="flex items-center gap-4">
+            <div class="w-8 h-8 bg-zinc-800 rounded flex items-center justify-center font-black text-white italic border border-zinc-700">V</div>
+            <h1 class="text-xs font-bold tracking-widest uppercase text-zinc-400 hidden xl:block">Vol Lab Pro</h1>
+        </div>
+
+        <!-- 居中选择器组 -->
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <div class="select-group">
+                    <span class="select-label">Market</span>
+                    <select id="ex-select" class="min-w-[80px]"></select>
+                </div>
+                <div class="select-group">
+                    <span class="select-label">Asset</span>
+                    <select id="prod-select" class="min-w-[100px]"></select>
+                </div>
+                <div class="select-group">
+                    <span class="select-label">Contract</span>
+                    <select id="contract-select" class="min-w-[80px]"></select>
+                </div>
+            </div>
+
+            <div class="w-px h-6 bg-zinc-800"></div>
+
+            <div class="select-group">
+                <span class="select-label">Timeframe</span>
+                <select id="period-select">
+                    <option value="1">1m</option>
+                    <option value="15">15m</option>
+                    <option value="101">Daily</option>
+                </select>
             </div>
         </div>
-        <div class="flex items-center gap-6">
-            <div class="flex items-center gap-2">
-                <span id="data-source-indicator" class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                <span id="data-source-label" class="text-[11px] font-bold text-zinc-400">STATUS: INITIALIZING</span>
-            </div>
-            <button class="bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold px-4 py-1.5 rounded transition-all">
-                EXPORT REPORT
-            </button>
+
+        <div class="flex items-center gap-4">
+            <span id="data-source-indicator" class="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
+            <span id="data-source-label" class="text-[9px] font-bold text-zinc-500 uppercase tracking-widest text-zinc-500">Live Sync</span>
         </div>
     </header>
 
     <div class="flex-1 flex overflow-hidden">
-        <!-- 左侧控制面板 -->
-        <aside class="w-72 border-r border-zinc-800 bg-[#111114] p-6 flex flex-col gap-6">
-            <section>
-                <label class="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest">Market / 市场定位</label>
-                <select id="ex-select" class="w-full bg-zinc-900 border border-zinc-800 text-sm rounded-md px-3 py-2 outline-none focus:border-blue-600 transition-colors"></select>
-            </section>
+        
+        <!-- 左侧：图表主区 -->
+        <main class="flex-1 flex flex-col min-w-0 bg-[#09090b] relative">
+            
+            <!-- 指标药丸图例：显示数值并控制显隐 -->
+            <div class="h-10 border-b border-zinc-800/50 flex items-center px-4 gap-3 bg-[#09090b]">
+                <div id="vol-toggles" class="flex items-center gap-2 no-scrollbar overflow-x-auto"></div>
+            </div>
 
-            <section>
-                <label class="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest">Product / 分析对象</label>
-                <select id="prod-select" class="w-full bg-zinc-900 border border-zinc-800 text-sm rounded-md px-3 py-2 outline-none focus:border-blue-600 transition-colors"></select>
-            </section>
-
-            <section>
-                <label class="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest">Contract / 合约文件</label>
-                <select id="contract-select" class="w-full bg-zinc-900 border border-zinc-800 text-sm rounded-md px-3 py-2 outline-none focus:border-blue-600 transition-colors"></select>
-            </section>
-
-            <div class="border-t border-zinc-800 my-2"></div>
-
-            <section>
-                <label class="text-[10px] font-bold text-zinc-500 mb-3 block uppercase tracking-widest">Indicators / 指标可见性</label>
-                <div id="vol-toggles" class="flex flex-col gap-2"></div>
-            </section>
-
-            <div class="mt-auto flex flex-col gap-2">
-                <div class="bg-zinc-900/50 p-4 rounded-lg border border-zinc-800">
-                    <div class="text-[10px] text-zinc-500 mb-1 tracking-widest uppercase">Terminal Status</div>
-                    <div id="status-text" class="jetbrains text-[11px] text-zinc-400">Waiting for selection...</div>
+            <div id="chart-container" class="flex-1 relative cursor-crosshair">
+                <div id="legend" class="absolute top-4 left-4 z-10 pointer-events-none bg-black/40 p-2 rounded backdrop-blur-md border border-white/5 min-w-[180px]">
+                    <div id="price-legend" class="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-bold">
+                        <span class="text-zinc-500 uppercase font-black w-full mb-0.5">Price (L)</span>
+                        <span class="text-zinc-500">O: <span id="l-open" class="text-zinc-300">--</span></span>
+                        <span class="text-zinc-500">H: <span id="l-high" class="text-zinc-300">--</span></span>
+                        <span class="text-zinc-500">L: <span id="l-low" class="text-zinc-300">--</span></span>
+                        <span class="text-zinc-500">C: <span id="l-close" class="text-zinc-300">--</span></span>
+                        <span id="l-chg" class="ml-1 font-black">--</span>
+                    </div>
                 </div>
-                <!-- 验证更新的标记：手动设置代码更新时间 -->
-                <div class="px-1 flex justify-between items-center text-[9px] text-zinc-600 font-mono uppercase tracking-tighter">
-                    <span>Build: v1.0.3</span>
-                    <span id="last-sync-time">Last Sync: 2026-01-19 08:11</span>
+            </div>
+            
+            <footer class="h-8 border-t border-zinc-800 bg-[#09090b] flex items-center justify-between px-4 text-[9px] font-mono text-zinc-600 uppercase tracking-widest">
+                <div>Single Tracker Axis Mode / No Static Overlap</div>
+                <div class="flex items-center gap-4">
+                    <span>Build: v1.2.3</span>
+                    <span>Sync: 2026-01-20 17:15 (CST)</span>
                 </div>
+            </footer>
+        </main>
+
+        <aside class="w-80 border-l border-zinc-800 bg-[#111114] flex flex-col overflow-hidden">
+            
+            <div class="p-6 border-b border-zinc-800 bg-zinc-900/10">
+                <h4 class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2 text-zinc-500">标的资产</h4>
+                <div class="flex items-baseline gap-3">
+                    <span id="snap-price" class="text-3xl font-black jetbrains text-white tracking-tighter">--</span>
+                    <span id="snap-chg-percent" class="text-sm font-bold jetbrains">--</span>
+                </div>
+                
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <div class="bg-zinc-900/40 p-2.5 rounded border border-zinc-800 shadow-sm">
+                        <div class="text-[9px] text-zinc-600 font-bold uppercase mb-0.5 tracking-tighter text-zinc-500">ATM IV</div>
+                        <div id="snap-iv" class="text-sm font-bold text-amber-400 jetbrains">--</div>
+                    </div>
+                    <div class="bg-zinc-900/40 p-2.5 rounded border border-zinc-800 shadow-sm">
+                        <div class="text-[9px] text-zinc-600 font-bold uppercase mb-0.5 tracking-tighter text-zinc-500">PCR</div>
+                        <div id="snap-pcr" class="text-sm font-bold text-blue-400 jetbrains">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 flex flex-col p-6 overflow-hidden">
+                <div class="flex justify-between items-center mb-5">
+                    <h4 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-zinc-500">波动率矩阵</h4>
+                    <div class="flex bg-zinc-900 rounded p-0.5 border border-zinc-800 shadow-inner" id="matrix-period-btns">
+                        <button class="period-btn px-2 py-0.5 text-[9px] font-bold text-zinc-500 rounded" data-days="30">30D</button>
+                        <button class="period-btn px-2 py-0.5 text-[9px] font-bold text-zinc-500 rounded" data-days="90">90D</button>
+                        <button class="period-btn px-2 py-0.5 text-[9px] font-bold text-zinc-500 rounded" data-days="180">180D</button>
+                        <button class="period-btn px-2 py-0.5 text-[9px] font-bold text-zinc-500 rounded" data-days="0">ALL</button>
+                    </div>
+                </div>
+                
+                <div class="flex-1 overflow-auto">
+                    <table class="w-full text-left matrix-table border-collapse">
+                        <thead>
+                            <tr class="border-b border-zinc-800/80">
+                                <th class="text-left pb-2">指标</th>
+                                <th class="text-right pb-2">数值</th>
+                                <th class="text-right pb-2">历史分位</th>
+                                <th class="text-right pb-2">隐历差</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrix-body" class="jetbrains text-[11px]"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="p-4 bg-zinc-900/20 border-t border-zinc-800">
+                <button class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded text-[10px] font-black transition-all shadow-lg active:translate-y-px uppercase tracking-widest">
+                    Export Analysis Report
+                </button>
             </div>
         </aside>
-
-        <!-- 主内容区 -->
-        <main class="flex-1 flex flex-col min-w-0 bg-[#09090b]">
-            <div id="chart-container" class="flex-1 relative cursor-crosshair">
-                <div id="legend" class="absolute top-4 left-4 z-10 pointer-events-none flex flex-wrap gap-x-4 gap-y-1 bg-[#09090b]/80 p-2 rounded backdrop-blur-sm border border-zinc-800">
-                    <div id="price-legend" class="flex gap-2 text-xs font-bold">
-                        <span class="text-zinc-400">PRICE (R):</span>
-                        <span id="l-open">--</span>
-                        <span id="l-high">--</span>
-                        <span id="l-low">--</span>
-                        <span id="l-close">--</span>
-                        <span id="l-chg" class="ml-2">--</span>
-                    </div>
-                    <div class="w-px h-3 bg-zinc-700 mx-1"></div>
-                    <div id="vol-legend" class="flex gap-x-4 text-xs font-bold"></div>
-                </div>
-            </div>
-
-            <!-- 底部数据面板 -->
-            <div class="h-72 border-t border-zinc-800 flex bg-[#111114]">
-                <div class="w-80 border-r border-zinc-800 p-6 flex flex-col gap-4">
-                    <h4 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Snapshot / 实时快照</h4>
-                    <div class="grid grid-cols-1 gap-3">
-                        <div class="bg-zinc-900 p-3 rounded border border-zinc-800 flex justify-between items-center">
-                            <span class="text-xs text-zinc-400">PCR成交比</span>
-                            <span id="snap-pcr" class="jetbrains text-sm font-bold text-blue-400">--</span>
-                        </div>
-                        <div class="bg-zinc-900 p-3 rounded border border-zinc-800 flex justify-between items-center">
-                            <span class="text-xs text-zinc-400">ATM 隐波</span>
-                            <span id="snap-iv" class="jetbrains text-sm font-bold text-amber-400">--</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex-1 p-6 flex flex-col overflow-hidden">
-                    <div class="flex justify-between items-center mb-4">
-                        <h4 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Volatility Matrix / 波动率矩阵</h4>
-                        <div class="flex bg-zinc-900 rounded-md p-0.5 border border-zinc-800">
-                            <button class="px-3 py-1 text-[10px] font-bold text-zinc-400 hover:text-white transition-colors" onclick="updateMatrix(30)">30D</button>
-                            <button class="px-3 py-1 text-[10px] font-bold text-white bg-zinc-800 rounded shadow" onclick="updateMatrix(90)">90D</button>
-                            <button class="px-3 py-1 text-[10px] font-bold text-zinc-400 hover:text-white transition-colors" onclick="updateMatrix(180)">180D</button>
-                        </div>
-                    </div>
-                    <div class="flex-1 overflow-auto">
-                        <table class="w-full text-left text-xs">
-                            <thead>
-                                <tr class="text-zinc-500 border-b border-zinc-800">
-                                    <th class="pb-2 font-bold uppercase tracking-wider">指标</th>
-                                    <th class="pb-2 font-bold uppercase tracking-wider text-right">当前值</th>
-                                    <th class="pb-2 font-bold uppercase tracking-wider text-right">历史分位 (P-tile)</th>
-                                    <th class="pb-2 font-bold uppercase tracking-wider text-right">隐历差 (IV-HV)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="matrix-body" class="jetbrains"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </main>
     </div>
 
     <script>
+        // --- 1. 数据定义与配置 ---
         const MARKET_DATA = {
             "CFFEX": { "IF300": ["IF2503", "IF2506"], "IC500": ["IC2503", "IC2506"] },
-            "SHFE": { "Gold": ["au2506", "au2512"] }
+            "SHFE": { "Gold": ["au2506", "au2512"], "Copper": ["cu2504"] }
         };
 
         const VOL_CONFIG = {
-            atmIV: { color: '#60a5fa', label: '平值IV', active: true },
-            iVix: { color: '#f87171', label: 'VIX', active: true },
-            hv5: { color: '#84cc16', label: 'HV5', active: false },
-            hv20: { color: '#fbbf24', label: 'HV20', active: true },
-            hv30: { color: '#ec4899', label: 'HV30', active: false },
-            hv60: { color: '#a78bfa', label: 'HV60', active: false },
-            rv20: { color: '#2dd4bf', label: 'RV20', active: false }
+            atmIV: { color: '#60a5fa', label: 'ATM IV', active: true, showSpread: false },
+            iVix: { color: '#f87171', label: 'VIX', active: true, showSpread: false },
+            hv5: { color: '#84cc16', label: 'HV5', active: false, showSpread: true },
+            hv20: { color: '#fbbf24', label: 'HV20', active: true, showSpread: true },
+            hv30: { color: '#ec4899', label: 'HV30', active: false, showSpread: true },
+            hv60: { color: '#a78bfa', label: 'HV60', active: false, showSpread: true },
+            rv20: { color: '#2dd4bf', label: 'RV20', active: false, showSpread: true }
         };
 
         let chart, candlestickSeries, volSeriesMap = {};
         let currentData = [];
+        let currentMatrixLookback = 90;
+        let trackingPriceLines = {}; // 存储坐标轴动态彩色标签
 
+        // --- 2. 初始化图表 ---
         function initChart() {
             const container = document.getElementById('chart-container');
             const Lib = window.LightweightCharts;
             if (!Lib) return;
 
             chart = Lib.createChart(container, {
-                layout: { background: { color: '#09090b' }, textColor: '#a1a1aa', fontSize: 11, fontFamily: 'JetBrains Mono' },
-                grid: { vertLines: { color: '#18181b' }, horzLines: { color: '#18181b' } },
-                crosshair: { mode: Lib.CrosshairMode.Normal },
-                rightPriceScale: { borderColor: '#27272a', visible: true, autoScale: true, title: 'PRICE' },
-                leftPriceScale: { borderColor: '#27272a', visible: true, autoScale: true, title: 'VOL %' },
-                timeScale: { borderColor: '#27272a', timeVisible: true }
+                layout: { background: { color: '#18181b' }, textColor: '#71717a', fontSize: 10, fontFamily: 'JetBrains Mono' },
+                grid: { vertLines: { color: '#222226' }, horzLines: { color: '#222226' } },
+                crosshair: { 
+                    mode: Lib.CrosshairMode.Magnet,
+                    vertLine: { labelVisible: true, color: '#52525b', width: 1, style: 2 },
+                    // 禁用默认水平标签，防止与我们的彩色标签重叠显示两个
+                    horzLine: { labelVisible: false } 
+                },
+                leftPriceScale: { borderColor: '#2d2d30', visible: true, autoScale: true, scaleMargins: { top: 0.1, bottom: 0.3 } },
+                rightPriceScale: { borderColor: '#2d2d30', visible: true, autoScale: true, scaleMargins: { top: 0.3, bottom: 0.1 } },
+                timeScale: { borderColor: '#2d2d30', timeVisible: true }
             });
 
+            // 核心修复：lastValueVisible: false 隐藏常驻最新价标签
             candlestickSeries = chart.addCandlestickSeries({
-                upColor: '#22c55e', downColor: '#ef4444', borderVisible: false, priceScaleId: 'right' 
+                upColor: '#71717a', downColor: '#333336', borderVisible: false, wickUpColor: '#71717a', wickDownColor: '#333336',
+                priceScaleId: 'left',
+                lastValueVisible: false 
             });
 
             Object.keys(VOL_CONFIG).forEach(key => {
                 volSeriesMap[key] = chart.addLineSeries({
-                    color: VOL_CONFIG[key].color, lineWidth: 1.5, priceScaleId: 'left', visible: VOL_CONFIG[key].active
+                    color: VOL_CONFIG[key].color, lineWidth: 1.5, priceScaleId: 'right', visible: VOL_CONFIG[key].active,
+                    lastValueVisible: false // 隐藏常驻标签
                 });
             });
 
-            window.addEventListener('resize', () => {
-                chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
-            });
+            window.addEventListener('resize', () => { chart.applyOptions({ width: container.clientWidth, height: container.clientHeight }); });
 
+            // 订阅光标移动：管理轴上的唯一浮动标签
             chart.subscribeCrosshairMove(param => {
-                if (param.time) {
-                    const d = param.seriesData.get(candlestickSeries);
-                    if (d) {
-                        document.getElementById('l-open').innerText = d.open.toFixed(1);
-                        document.getElementById('l-high').innerText = d.high.toFixed(1);
-                        document.getElementById('l-low').innerText = d.low.toFixed(1);
-                        document.getElementById('l-close').innerText = d.close.toFixed(1);
-                        const chg = ((d.close - d.open) / d.open * 100);
-                        const el = document.getElementById('l-chg');
-                        el.innerText = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
-                        el.className = chg >= 0 ? 'text-emerald-500' : 'text-rose-500';
+                // 清理所有已有的动态轴标签
+                Object.keys(trackingPriceLines).forEach(key => {
+                    if (key === 'MAIN_PRICE') {
+                        candlestickSeries.removePriceLine(trackingPriceLines[key]);
+                    } else if (volSeriesMap[key]) {
+                        volSeriesMap[key].removePriceLine(trackingPriceLines[key]);
                     }
-                    let volHTML = '<span class="text-zinc-400">VOL (L):</span>';
-                    Object.keys(VOL_CONFIG).forEach(key => {
-                        if (VOL_CONFIG[key].active) {
-                            const v = param.seriesData.get(volSeriesMap[key]);
-                            volHTML += `<span style="color: ${VOL_CONFIG[key].color}; margin-left:8px;">${VOL_CONFIG[key].label}: ${v ? v.value.toFixed(1) : '--'}%</span>`;
-                        }
+                });
+                trackingPriceLines = {};
+
+                if (!param.time) {
+                    updateNumericalLabels(currentData[currentData.length - 1]);
+                    return;
+                }
+
+                // 1. 更新价格（左轴标签）
+                const priceData = param.seriesData.get(candlestickSeries);
+                if (priceData) {
+                    document.getElementById('l-open').innerText = priceData.open.toFixed(1);
+                    document.getElementById('l-high').innerText = priceData.high.toFixed(1);
+                    document.getElementById('l-low').innerText = priceData.low.toFixed(1);
+                    document.getElementById('l-close').innerText = priceData.close.toFixed(1);
+                    const chg = ((priceData.close - priceData.open) / priceData.open * 100);
+                    document.getElementById('l-chg').innerText = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+                    document.getElementById('l-chg').className = chg >= 0 ? 'text-emerald-500/80' : 'text-rose-500/80';
+
+                    // 动态创建左轴灰色浮标
+                    trackingPriceLines['MAIN_PRICE'] = candlestickSeries.createPriceLine({
+                        price: priceData.close,
+                        color: '#a1a1aa',
+                        lineWidth: 1,
+                        lineStyle: 2,
+                        axisLabelVisible: true,
+                        title: '',
                     });
-                    document.getElementById('vol-legend').innerHTML = volHTML;
+                }
+
+                // 2. 更新指标（右轴彩色标签）
+                Object.keys(VOL_CONFIG).forEach(key => {
+                    if (VOL_CONFIG[key].active) {
+                        const vData = param.seriesData.get(volSeriesMap[key]);
+                        const valDisplay = document.getElementById(`pill-val-${key}`);
+                        
+                        if (vData && typeof vData.value === 'number') {
+                            if (valDisplay) {
+                                valDisplay.innerText = vData.value.toFixed(1) + '%';
+                                valDisplay.classList.add('text-zinc-200'); 
+                            }
+                            
+                            // 动态创建右轴彩色浮标
+                            trackingPriceLines[key] = volSeriesMap[key].createPriceLine({
+                                price: vData.value,
+                                color: VOL_CONFIG[key].color,
+                                lineWidth: 1,
+                                lineStyle: 2,
+                                axisLabelVisible: true,
+                                title: '',
+                            });
+                        }
+                    }
+                });
+            });
+        }
+
+        // 刷新数值展示
+        function updateNumericalLabels(d) {
+            if (!d) return;
+            document.getElementById('l-open').innerText = d.open.toFixed(1);
+            document.getElementById('l-high').innerText = d.high.toFixed(1);
+            document.getElementById('l-low').innerText = d.low.toFixed(1);
+            document.getElementById('l-close').innerText = d.close.toFixed(1);
+            
+            Object.keys(VOL_CONFIG).forEach(key => {
+                const valDisplay = document.getElementById(`pill-val-${key}`);
+                if (valDisplay) {
+                    valDisplay.innerText = d[key] ? d[key].toFixed(1) + '%' : '--';
+                    valDisplay.classList.remove('text-zinc-200'); 
                 }
             });
         }
 
-        async function refresh(contract) {
-            const apiUrl = `./data/${contract}.json`; 
-            const statusLabel = document.getElementById('data-source-label');
-            const statusText = document.getElementById('status-text');
-            const indicator = document.getElementById('data-source-indicator');
-
-            // 此处不再动态更新 last-sync-time，保持 HTML 中的代码提交时间
+        // --- 3. 核心驱动逻辑 ---
+        async function refresh() {
+            const contract = document.getElementById('contract-select').value;
+            const period = document.getElementById('period-select').value;
+            const fileSuffix = period === '101' ? '' : `_${period}`;
+            const apiUrl = `./data/${contract}${fileSuffix}.json`; 
 
             try {
-                statusLabel.innerText = "FETCHING: " + contract;
-                indicator.className = "w-2 h-2 bg-blue-500 rounded-full animate-pulse";
-                
                 const response = await fetch(apiUrl);
-                if (!response.ok) throw new Error('File Not Found');
-                
+                if (!response.ok) throw new Error('404');
                 currentData = await response.json();
-                
-                statusLabel.innerText = "LIVE DATA ACTIVE";
-                statusLabel.className = "text-[11px] font-bold text-emerald-500";
-                indicator.className = "w-2 h-2 bg-emerald-500 rounded-full";
-                statusText.innerText = `Connected to: /data/${contract}.json`;
-
+                document.getElementById('data-source-indicator').className = "w-1.5 h-1.5 bg-emerald-500 rounded-full";
             } catch (err) {
-                console.warn(`[VOL LAB] 无法读取文件 ${apiUrl}，启动模拟演示引擎。`);
-                currentData = generateMockData(); 
-                statusLabel.innerText = "DEMO MODE (MOCK)";
-                statusLabel.className = "text-[11px] font-bold text-amber-500";
-                indicator.className = "w-2 h-2 bg-amber-500 rounded-full animate-pulse";
-                statusText.innerText = "Warning: Data file not found in /data/";
+                currentData = generateMockData(period); 
+                document.getElementById('data-source-indicator').className = "w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse";
             }
 
-            candlestickSeries.setData(currentData.map(d => ({ 
-                time: d.time, open: d.open, high: d.high, low: d.low, close: d.close 
-            })));
-
+            candlestickSeries.setData(currentData.map(d => ({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close })));
             Object.keys(VOL_CONFIG).forEach(k => {
-                volSeriesMap[k].setData(currentData.map(d => ({ 
-                    time: d.time, value: d[k] 
-                })));
+                volSeriesMap[k].setData(currentData.map(d => ({ time: d.time, value: d[k] })));
             });
 
             const last = currentData[currentData.length - 1];
             if (last) {
+                const prev = currentData[currentData.length - 2] || last;
+                const chg = ((last.close - prev.close) / prev.close * 100);
+                document.getElementById('snap-price').innerText = last.close.toFixed(1);
+                document.getElementById('snap-chg-percent').innerText = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+                document.getElementById('snap-chg-percent').className = `text-sm font-bold jetbrains ${chg >= 0 ? 'text-emerald-500' : 'text-rose-500'}`;
                 document.getElementById('snap-pcr').innerText = (last.pcr || 0).toFixed(2);
                 document.getElementById('snap-iv').innerText = (last.atmIV || 0).toFixed(1) + '%';
-                updateMatrix(90);
+                updateMatrix(currentMatrixLookback);
+                updateNumericalLabels(last);
             }
             chart.timeScale().fitContent();
         }
 
-        // 优化模拟引擎：修复阴线过多的问题，增加真实涨跌逻辑
-        function generateMockData() {
-            const count = 150; const data = []; let price = 3900; const now = Math.floor(Date.now() / 1000);
+        function generateMockData(period) {
+            const count = 350; const data = []; let price = 4150; const now = Math.floor(Date.now() / 1000);
+            const step = period === '101' ? 86400 : period === '15' ? 900 : 60;
             for (let i = 0; i < count; i++) {
-                const time = now - (count - i) * 86400;
-                
-                // 真正的随机游走：涨跌概率均等
-                const change = (Math.random() - 0.5) * 45; 
-                const open = price;
-                const close = open + change;
-                const high = Math.max(open, close) + Math.random() * 12;
-                const low = Math.min(open, close) - Math.random() * 12;
-                
-                price = close; 
-
+                const time = now - (count - i) * step;
+                const change = price * (period === '101' ? 0.012 : 0.003) * (Math.random() - 0.495); 
+                const open = price; const close = open + change;
                 data.push({
-                    time, open, high, low, close,
-                    atmIV: 14 + Math.sin(i/10)*6, 
-                    iVix: 15 + Math.cos(i/12)*4, 
-                    hv5: 12 + Math.random()*8,
-                    hv20: 13 + Math.sin(i/15)*5, 
-                    hv30: 14 + Math.cos(i/20)*4,
-                    hv60: 15 + Math.sin(i/30)*2, 
-                    rv20: 12 + Math.random()*3, 
-                    pcr: 0.85 + (Math.random()-0.5)*0.2
+                    time, open, close, 
+                    high: Math.max(open, close) + Math.random() * (price * 0.003),
+                    low: Math.min(open, close) - Math.random() * (price * 0.003),
+                    atmIV: 15 + Math.sin(i/12)*5 + Math.random()*2, iVix: 16 + Math.cos(i/15)*4, 
+                    hv5: 14 + Math.random()*4, hv20: 15 + Math.sin(i/15)*5, 
+                    hv30: 16 + Math.cos(i/20)*4, hv60: 17 + Math.sin(i/30)*2, 
+                    rv20: 13 + Math.random()*3, pcr: 0.85 + (Math.random()-0.5)*0.1
                 });
+                price = close; 
             }
             return data;
         }
 
         function updateMatrix(days) {
+            currentMatrixLookback = days;
             const last = currentData[currentData.length - 1];
             if (!last) return;
-            const subset = currentData.slice(-days);
+            const subset = days === 0 ? currentData : currentData.slice(-days);
             const tbody = document.getElementById('matrix-body');
             tbody.innerHTML = '';
+            
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                if (parseInt(btn.getAttribute('data-days')) === days) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
             Object.keys(VOL_CONFIG).forEach(key => {
                 const cfg = VOL_CONFIG[key];
-                const vals = subset.map(d => d[key]).filter(v => v !== null);
+                const vals = subset.map(d => d[key]).filter(v => v !== null && !isNaN(v));
                 const min = Math.min(...vals), max = Math.max(...vals);
                 const pTile = (max - min) !== 0 ? (last[key] - min) / (max - min) * 100 : 50;
-                const spread = (last.atmIV || 0) - last[key];
+                
+                let tileColor = "text-yellow-500";
+                if (pTile < 30) tileColor = "text-emerald-500";
+                else if (pTile > 70) tileColor = "text-rose-500";
+
+                let spreadText = "—";
+                let spreadColor = "text-zinc-600";
+                if (cfg.showSpread) {
+                    const diff = last.atmIV - last[key];
+                    spreadText = (diff >= 0 ? '+' : '') + diff.toFixed(1) + '%';
+                    spreadColor = diff >= 0 ? 'text-rose-500' : 'text-emerald-500';
+                }
+
                 tbody.innerHTML += `
-                    <tr class="border-b border-zinc-900 hover:bg-zinc-900/40 transition-all">
-                        <td class="py-3 font-bold" style="color: ${cfg.color}">${cfg.label}</td>
-                        <td class="py-3 text-right text-zinc-100">${last[key].toFixed(1)}%</td>
-                        <td class="py-3 text-right">
-                            <span class="px-2 py-0.5 rounded text-[10px] ${pTile > 80 ? 'bg-rose-500/20 text-rose-500' : pTile < 20 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-zinc-800 text-zinc-400'}">${pTile.toFixed(0)}%</span>
-                        </td>
-                        <td class="py-3 text-right ${spread >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${spread >= 0 ? '+' : ''}${spread.toFixed(1)}%</td>
+                    <tr>
+                        <td class="font-bold py-3 text-zinc-200 text-[10px]" style="color: ${cfg.color}">${cfg.label}</td>
+                        <td class="text-right text-zinc-100">${last[key].toFixed(1)}%</td>
+                        <td class="text-right font-bold ${tileColor}">${pTile.toFixed(0)}%</td>
+                        <td class="text-right font-bold ${spreadColor}">${spreadText}</td>
                     </tr>`;
             });
         }
@@ -339,6 +455,7 @@
             const exSelect = document.getElementById('ex-select');
             const prodSelect = document.getElementById('prod-select');
             const contractSelect = document.getElementById('contract-select');
+            const periodSelect = document.getElementById('period-select');
             const volToggles = document.getElementById('vol-toggles');
 
             exSelect.innerHTML = Object.keys(MARKET_DATA).map(ex => `<option value="${ex}">${ex}</option>`).join('');
@@ -350,33 +467,44 @@
             const updateContracts = () => {
                 const ex = exSelect.value; const prod = prodSelect.value;
                 contractSelect.innerHTML = MARKET_DATA[ex][prod].map(c => `<option value="${c}">${c}</option>`).join('');
-                refresh(contractSelect.value);
+                refresh();
             };
 
             exSelect.addEventListener('change', updateProducts);
             prodSelect.addEventListener('change', updateContracts);
-            contractSelect.addEventListener('change', () => refresh(contractSelect.value));
+            contractSelect.addEventListener('change', refresh);
+            periodSelect.addEventListener('change', refresh);
+
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.addEventListener('click', () => updateMatrix(parseInt(btn.getAttribute('data-days'))));
+            });
 
             volToggles.innerHTML = Object.keys(VOL_CONFIG).map(key => `
-                <div class="flex items-center justify-between cursor-pointer group" onclick="toggleSeries('${key}')">
-                    <div class="flex items-center gap-2">
-                        <div class="w-2 h-2 rounded-full" style="background-color: ${VOL_CONFIG[key].color}"></div>
-                        <span class="text-xs ${VOL_CONFIG[key].active ? 'text-zinc-200' : 'text-zinc-600'} group-hover:text-zinc-200 transition-colors" id="txt-${key}">${VOL_CONFIG[key].label}</span>
-                    </div>
-                    <div class="w-6 h-3 rounded-full relative transition-colors ${VOL_CONFIG[key].active ? 'bg-blue-600' : 'bg-zinc-800'}" id="tog-${key}">
-                        <div class="absolute top-0.5 left-0.5 w-2 h-2 bg-white rounded-full transition-transform ${VOL_CONFIG[key].active ? 'translate-x-3' : ''}" id="dot-${key}"></div>
-                    </div>
+                <div class="indicator-pill flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/50 text-[10px] font-black border border-zinc-800 ${VOL_CONFIG[key].active ? '' : 'inactive'}" 
+                     id="pill-${key}" onclick="toggleSeries('${key}')">
+                    <div class="w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor]" style="background-color: ${VOL_CONFIG[key].color}; color: ${VOL_CONFIG[key].color}"></div>
+                    <span class="text-zinc-300 uppercase">${VOL_CONFIG[key].label}</span>
+                    <span id="pill-val-${key}" class="ml-1 text-zinc-500 font-bold jetbrains">${VOL_CONFIG[key].active ? '--' : ''}</span>
                 </div>
             `).join('');
+
             updateProducts();
         }
 
         window.toggleSeries = function(key) {
             VOL_CONFIG[key].active = !VOL_CONFIG[key].active;
             volSeriesMap[key].applyOptions({ visible: VOL_CONFIG[key].active });
-            document.getElementById(`txt-${key}`).className = `text-xs ${VOL_CONFIG[key].active ? 'text-zinc-200' : 'text-zinc-600'}`;
-            document.getElementById(`tog-${key}`).className = `w-6 h-3 rounded-full relative transition-colors ${VOL_CONFIG[key].active ? 'bg-blue-600' : 'bg-zinc-800'}`;
-            document.getElementById(`dot-${key}`).className = `absolute top-0.5 left-0.5 w-2 h-2 bg-white rounded-full transition-transform ${VOL_CONFIG[key].active ? 'translate-x-3' : ''}`;
+            
+            const pill = document.getElementById(`pill-${key}`);
+            const valDisplay = document.getElementById(`pill-val-${key}`);
+            
+            pill.classList.toggle('inactive', !VOL_CONFIG[key].active);
+            if (!VOL_CONFIG[key].active) valDisplay.innerText = '';
+            else {
+                const last = currentData[currentData.length - 1];
+                if(last) valDisplay.innerText = last[key].toFixed(1) + '%';
+            }
+            updateMatrix(currentMatrixLookback); 
         };
 
         window.addEventListener('DOMContentLoaded', () => { setTimeout(() => { initChart(); setupUI(); }, 50); });
