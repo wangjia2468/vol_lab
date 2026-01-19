@@ -86,19 +86,22 @@
                 <div id="vol-toggles" class="flex flex-col gap-2"></div>
             </section>
 
-            <div class="mt-auto">
+            <div class="mt-auto flex flex-col gap-2">
                 <div class="bg-zinc-900/50 p-4 rounded-lg border border-zinc-800">
                     <div class="text-[10px] text-zinc-500 mb-1 tracking-widest uppercase">Terminal Status</div>
                     <div id="status-text" class="jetbrains text-[11px] text-zinc-400">Waiting for selection...</div>
+                </div>
+                <!-- 验证更新的标记 -->
+                <div class="px-1 flex justify-between items-center text-[9px] text-zinc-600 font-mono uppercase tracking-tighter">
+                    <span>Build: v1.0.1</span>
+                    <span>Last Sync: 2024-03-21</span>
                 </div>
             </div>
         </aside>
 
         <!-- 主内容区 -->
         <main class="flex-1 flex flex-col min-w-0 bg-[#09090b]">
-            <!-- 图表容器 -->
             <div id="chart-container" class="flex-1 relative cursor-crosshair">
-                <!-- 浮动信息栏 -->
                 <div id="legend" class="absolute top-4 left-4 z-10 pointer-events-none flex flex-wrap gap-x-4 gap-y-1 bg-[#09090b]/80 p-2 rounded backdrop-blur-sm border border-zinc-800">
                     <div id="price-legend" class="flex gap-2 text-xs font-bold">
                         <span class="text-zinc-400">PRICE (R):</span>
@@ -115,7 +118,6 @@
 
             <!-- 底部数据面板 -->
             <div class="h-72 border-t border-zinc-800 flex bg-[#111114]">
-                <!-- 快照 -->
                 <div class="w-80 border-r border-zinc-800 p-6 flex flex-col gap-4">
                     <h4 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Snapshot / 实时快照</h4>
                     <div class="grid grid-cols-1 gap-3">
@@ -130,7 +132,6 @@
                     </div>
                 </div>
 
-                <!-- 矩阵 -->
                 <div class="flex-1 p-6 flex flex-col overflow-hidden">
                     <div class="flex justify-between items-center mb-4">
                         <h4 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Volatility Matrix / 波动率矩阵</h4>
@@ -159,10 +160,8 @@
     </div>
 
     <script>
-        // --- 1. 数据源配置 ---
-        // 这里的合约名称必须与 data/ 文件夹下的文件名严格对应
         const MARKET_DATA = {
-            "CFFEX": { "IF300": ["IF2503", "IF2506","IF2509"], "IC500": ["IC2503", "IC2506"] },
+            "CFFEX": { "IF300": ["IF2503", "IF2506"], "IC500": ["IC2503", "IC2506"] },
             "SHFE": { "Gold": ["au2506", "au2512"] }
         };
 
@@ -177,7 +176,6 @@
         let chart, candlestickSeries, volSeriesMap = {};
         let currentData = [];
 
-        // --- 2. 图表初始化 (双坐标轴) ---
         function initChart() {
             const container = document.getElementById('chart-container');
             const Lib = window.LightweightCharts;
@@ -206,7 +204,6 @@
                 chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
             });
 
-            // 十字准星同步数据
             chart.subscribeCrosshairMove(param => {
                 if (param.time) {
                     const d = param.seriesData.get(candlestickSeries);
@@ -232,7 +229,6 @@
             });
         }
 
-        // --- 3. 核心：静态数据读取逻辑 ---
         async function refresh(contract) {
             const apiUrl = `./data/${contract}.json`; 
             const statusLabel = document.getElementById('data-source-label');
@@ -248,7 +244,6 @@
                 
                 currentData = await response.json();
                 
-                // 成功状态
                 statusLabel.innerText = "LIVE DATA ACTIVE";
                 statusLabel.className = "text-[11px] font-bold text-emerald-500";
                 indicator.className = "w-2 h-2 bg-emerald-500 rounded-full";
@@ -256,8 +251,6 @@
 
             } catch (err) {
                 console.warn(`[VOL LAB] 无法读取文件 ${apiUrl}，启动模拟演示引擎。`);
-                
-                // 失败状态：降级到模拟数据
                 currentData = generateMockData(); 
                 statusLabel.innerText = "DEMO MODE (MOCK)";
                 statusLabel.className = "text-[11px] font-bold text-amber-500";
@@ -265,7 +258,6 @@
                 statusText.innerText = "Warning: Data file not found in /data/";
             }
 
-            // 更新数据到图表序列
             candlestickSeries.setData(currentData.map(d => ({ 
                 time: d.time, open: d.open, high: d.high, low: d.low, close: d.close 
             })));
@@ -276,7 +268,6 @@
                 })));
             });
 
-            // 更新 UI 面板
             const last = currentData[currentData.length - 1];
             if (last) {
                 document.getElementById('snap-pcr').innerText = (last.pcr || 0).toFixed(2);
@@ -286,7 +277,6 @@
             chart.timeScale().fitContent();
         }
 
-        // 备选模拟引擎
         function generateMockData() {
             const count = 150; const data = []; let price = 3900; const now = Math.floor(Date.now() / 1000);
             for (let i = 0; i < count; i++) {
@@ -301,7 +291,6 @@
             return data;
         }
 
-        // --- 4. 矩阵与 UI 逻辑 ---
         function updateMatrix(days) {
             const last = currentData[currentData.length - 1];
             if (!last) return;
@@ -374,4 +363,3 @@
     </script>
 </body>
 </html>
-
