@@ -52,11 +52,11 @@
         </div>
         <div class="flex items-center gap-6">
             <div class="flex items-center gap-2">
-                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                <span class="text-[11px] font-bold text-zinc-400">MARKET CONNECTED</span>
+                <span id="data-source-indicator" class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                <span id="data-source-label" class="text-[11px] font-bold text-zinc-400">STATUS: INITIALIZING</span>
             </div>
             <button class="bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold px-4 py-1.5 rounded transition-all">
-                EXPORT DATA
+                EXPORT REPORT
             </button>
         </div>
     </header>
@@ -75,7 +75,7 @@
             </section>
 
             <section>
-                <label class="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest">Contract / 合约</label>
+                <label class="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest">Contract / 合约文件</label>
                 <select id="contract-select" class="w-full bg-zinc-900 border border-zinc-800 text-sm rounded-md px-3 py-2 outline-none focus:border-blue-600 transition-colors"></select>
             </section>
 
@@ -88,14 +88,15 @@
 
             <div class="mt-auto">
                 <div class="bg-zinc-900/50 p-4 rounded-lg border border-zinc-800">
-                    <div class="text-[10px] text-zinc-500 mb-1">DATA LATENCY</div>
-                    <div class="jetbrains text-xs text-emerald-400">14ms (via Webhook)</div>
+                    <div class="text-[10px] text-zinc-500 mb-1 tracking-widest uppercase">Terminal Status</div>
+                    <div id="status-text" class="jetbrains text-[11px] text-zinc-400">Waiting for selection...</div>
                 </div>
             </div>
         </aside>
 
         <!-- 主内容区 -->
         <main class="flex-1 flex flex-col min-w-0 bg-[#09090b]">
+            <!-- 图表容器 -->
             <div id="chart-container" class="flex-1 relative cursor-crosshair">
                 <!-- 浮动信息栏 -->
                 <div id="legend" class="absolute top-4 left-4 z-10 pointer-events-none flex flex-wrap gap-x-4 gap-y-1 bg-[#09090b]/80 p-2 rounded backdrop-blur-sm border border-zinc-800">
@@ -112,8 +113,9 @@
                 </div>
             </div>
 
-            <!-- 底部面板 -->
+            <!-- 底部数据面板 -->
             <div class="h-72 border-t border-zinc-800 flex bg-[#111114]">
+                <!-- 快照 -->
                 <div class="w-80 border-r border-zinc-800 p-6 flex flex-col gap-4">
                     <h4 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Snapshot / 实时快照</h4>
                     <div class="grid grid-cols-1 gap-3">
@@ -128,7 +130,8 @@
                     </div>
                 </div>
 
-                <div class="flex-1 p-6 flex flex-col">
+                <!-- 矩阵 -->
+                <div class="flex-1 p-6 flex flex-col overflow-hidden">
                     <div class="flex justify-between items-center mb-4">
                         <h4 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Volatility Matrix / 波动率矩阵</h4>
                         <div class="flex bg-zinc-900 rounded-md p-0.5 border border-zinc-800">
@@ -156,7 +159,8 @@
     </div>
 
     <script>
-        // --- 1. 配置项 ---
+        // --- 1. 数据源配置 ---
+        // 这里的合约名称必须与 data/ 文件夹下的文件名严格对应
         const MARKET_DATA = {
             "CFFEX": { "IF300": ["IF2503", "IF2506"], "IC500": ["IC2503", "IC2506"] },
             "SHFE": { "Gold": ["au2506", "au2512"] }
@@ -173,7 +177,7 @@
         let chart, candlestickSeries, volSeriesMap = {};
         let currentData = [];
 
-        // --- 2. 初始化图表 (双坐标轴配置) ---
+        // --- 2. 图表初始化 (双坐标轴) ---
         function initChart() {
             const container = document.getElementById('chart-container');
             const Lib = window.LightweightCharts;
@@ -183,26 +187,18 @@
                 layout: { background: { color: '#09090b' }, textColor: '#a1a1aa', fontSize: 11, fontFamily: 'JetBrains Mono' },
                 grid: { vertLines: { color: '#18181b' }, horzLines: { color: '#18181b' } },
                 crosshair: { mode: Lib.CrosshairMode.Normal },
-                // 开启右侧轴 (用于价格)
                 rightPriceScale: { borderColor: '#27272a', visible: true, autoScale: true, title: 'PRICE' },
-                // 开启左侧轴 (用于波动率)
                 leftPriceScale: { borderColor: '#27272a', visible: true, autoScale: true, title: 'VOL %' },
                 timeScale: { borderColor: '#27272a', timeVisible: true }
             });
 
-            // 价格序列 -> 绑定右轴 (默认)
             candlestickSeries = chart.addCandlestickSeries({
-                upColor: '#22c55e', downColor: '#ef4444', borderVisible: false,
-                priceScaleId: 'right' 
+                upColor: '#22c55e', downColor: '#ef4444', borderVisible: false, priceScaleId: 'right' 
             });
 
-            // 波动率序列 -> 全部绑定左轴
             Object.keys(VOL_CONFIG).forEach(key => {
                 volSeriesMap[key] = chart.addLineSeries({
-                    color: VOL_CONFIG[key].color,
-                    lineWidth: 1.5,
-                    priceScaleId: 'left', // 核心：切换到左侧坐标轴
-                    visible: VOL_CONFIG[key].active
+                    color: VOL_CONFIG[key].color, lineWidth: 1.5, priceScaleId: 'left', visible: VOL_CONFIG[key].active
                 });
             });
 
@@ -210,7 +206,7 @@
                 chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
             });
 
-            // 交互联动
+            // 十字准星同步数据
             chart.subscribeCrosshairMove(param => {
                 if (param.time) {
                     const d = param.seriesData.get(candlestickSeries);
@@ -224,12 +220,11 @@
                         el.innerText = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
                         el.className = chg >= 0 ? 'text-emerald-500' : 'text-rose-500';
                     }
-                    
                     let volHTML = '<span class="text-zinc-400">VOL (L):</span>';
                     Object.keys(VOL_CONFIG).forEach(key => {
                         if (VOL_CONFIG[key].active) {
                             const v = param.seriesData.get(volSeriesMap[key]);
-                            volHTML += `<span style="color: ${VOL_CONFIG[key].color}">${VOL_CONFIG[key].label}: ${v ? v.value.toFixed(1) : '--'}%</span>`;
+                            volHTML += `<span style="color: ${VOL_CONFIG[key].color}; margin-left:8px;">${VOL_CONFIG[key].label}: ${v ? v.value.toFixed(1) : '--'}%</span>`;
                         }
                     });
                     document.getElementById('vol-legend').innerHTML = volHTML;
@@ -237,43 +232,76 @@
             });
         }
 
-        // --- 3. 数据处理 ---
-        function generateData() {
-            const count = 300;
-            const data = [];
-            let price = 4000;
-            const now = Math.floor(Date.now() / 1000);
+        // --- 3. 核心：静态数据读取逻辑 ---
+        async function refresh(contract) {
+            const apiUrl = `./data/${contract}.json`; 
+            const statusLabel = document.getElementById('data-source-label');
+            const statusText = document.getElementById('status-text');
+            const indicator = document.getElementById('data-source-indicator');
+
+            try {
+                statusLabel.innerText = "FETCHING: " + contract;
+                indicator.className = "w-2 h-2 bg-blue-500 rounded-full animate-pulse";
+                
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error('File Not Found');
+                
+                currentData = await response.json();
+                
+                // 成功状态
+                statusLabel.innerText = "LIVE DATA ACTIVE";
+                statusLabel.className = "text-[11px] font-bold text-emerald-500";
+                indicator.className = "w-2 h-2 bg-emerald-500 rounded-full";
+                statusText.innerText = `Connected to: /data/${contract}.json`;
+
+            } catch (err) {
+                console.warn(`[VOL LAB] 无法读取文件 ${apiUrl}，启动模拟演示引擎。`);
+                
+                // 失败状态：降级到模拟数据
+                currentData = generateMockData(); 
+                statusLabel.innerText = "DEMO MODE (MOCK)";
+                statusLabel.className = "text-[11px] font-bold text-amber-500";
+                indicator.className = "w-2 h-2 bg-amber-500 rounded-full animate-pulse";
+                statusText.innerText = "Warning: Data file not found in /data/";
+            }
+
+            // 更新数据到图表序列
+            candlestickSeries.setData(currentData.map(d => ({ 
+                time: d.time, open: d.open, high: d.high, low: d.low, close: d.close 
+            })));
+
+            Object.keys(VOL_CONFIG).forEach(k => {
+                volSeriesMap[k].setData(currentData.map(d => ({ 
+                    time: d.time, value: d[k] 
+                })));
+            });
+
+            // 更新 UI 面板
+            const last = currentData[currentData.length - 1];
+            if (last) {
+                document.getElementById('snap-pcr').innerText = (last.pcr || 0).toFixed(2);
+                document.getElementById('snap-iv').innerText = (last.atmIV || 0).toFixed(1) + '%';
+                updateMatrix(90);
+            }
+            chart.timeScale().fitContent();
+        }
+
+        // 备选模拟引擎
+        function generateMockData() {
+            const count = 150; const data = []; let price = 3900; const now = Math.floor(Date.now() / 1000);
             for (let i = 0; i < count; i++) {
                 const time = now - (count - i) * 86400;
-                const open = price + (Math.random() - 0.5) * 40;
-                const close = open + (Math.random() - 0.5) * 50;
+                const close = price + (Math.random() - 0.5) * 40;
                 price = close;
                 data.push({
-                    time, open, high: Math.max(open, close) + 10, low: Math.min(open, close) - 10, close,
-                    atmIV: 15 + Math.sin(i / 10) * 4 + Math.random() * 2,
-                    iVix: 16 + Math.sin(i / 10) * 3 + Math.random() * 2,
-                    hv20: 14 + Math.cos(i / 15) * 3 + Math.random() * 2,
-                    hv60: 15 + Math.sin(i / 30) * 2,
-                    rv20: 13 + Math.random() * 3,
-                    pcr: 0.7 + Math.random() * 0.4
+                    time, open: close-4, high: close+8, low: close-12, close,
+                    atmIV: 14 + Math.sin(i/10)*6, iVix: 15, hv20: 13, hv60: 14, rv20: 12, pcr: 0.85
                 });
             }
             return data;
         }
 
-        function refresh() {
-            currentData = generateData();
-            candlestickSeries.setData(currentData.map(d => ({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close })));
-            Object.keys(VOL_CONFIG).forEach(k => {
-                volSeriesMap[k].setData(currentData.map(d => ({ time: d.time, value: d[k] })));
-            });
-            const last = currentData[currentData.length - 1];
-            document.getElementById('snap-pcr').innerText = last.pcr.toFixed(2);
-            document.getElementById('snap-iv').innerText = last.atmIV.toFixed(1) + '%';
-            updateMatrix(90);
-            chart.timeScale().fitContent();
-        }
-
+        // --- 4. 矩阵与 UI 逻辑 ---
         function updateMatrix(days) {
             const last = currentData[currentData.length - 1];
             if (!last) return;
@@ -282,12 +310,12 @@
             tbody.innerHTML = '';
             Object.keys(VOL_CONFIG).forEach(key => {
                 const cfg = VOL_CONFIG[key];
-                const vals = subset.map(d => d[key]);
+                const vals = subset.map(d => d[key]).filter(v => v !== null);
                 const min = Math.min(...vals), max = Math.max(...vals);
                 const pTile = (max - min) !== 0 ? (last[key] - min) / (max - min) * 100 : 50;
-                const spread = last.atmIV - last[key];
+                const spread = (last.atmIV || 0) - last[key];
                 tbody.innerHTML += `
-                    <tr class="border-b border-zinc-900 hover:bg-zinc-900/40">
+                    <tr class="border-b border-zinc-900 hover:bg-zinc-900/40 transition-all">
                         <td class="py-3 font-bold" style="color: ${cfg.color}">${cfg.label}</td>
                         <td class="py-3 text-right text-zinc-100">${last[key].toFixed(1)}%</td>
                         <td class="py-3 text-right">
@@ -313,18 +341,18 @@
             const updateContracts = () => {
                 const ex = exSelect.value; const prod = prodSelect.value;
                 contractSelect.innerHTML = MARKET_DATA[ex][prod].map(c => `<option value="${c}">${c}</option>`).join('');
-                refresh();
+                refresh(contractSelect.value);
             };
 
             exSelect.addEventListener('change', updateProducts);
             prodSelect.addEventListener('change', updateContracts);
-            contractSelect.addEventListener('change', refresh);
+            contractSelect.addEventListener('change', () => refresh(contractSelect.value));
 
             volToggles.innerHTML = Object.keys(VOL_CONFIG).map(key => `
-                <div class="flex items-center justify-between cursor-pointer" onclick="toggleSeries('${key}')">
+                <div class="flex items-center justify-between cursor-pointer group" onclick="toggleSeries('${key}')">
                     <div class="flex items-center gap-2">
                         <div class="w-2 h-2 rounded-full" style="background-color: ${VOL_CONFIG[key].color}"></div>
-                        <span class="text-xs ${VOL_CONFIG[key].active ? 'text-zinc-200' : 'text-zinc-600'}" id="txt-${key}">${VOL_CONFIG[key].label}</span>
+                        <span class="text-xs ${VOL_CONFIG[key].active ? 'text-zinc-200' : 'text-zinc-600'} group-hover:text-zinc-200 transition-colors" id="txt-${key}">${VOL_CONFIG[key].label}</span>
                     </div>
                     <div class="w-6 h-3 rounded-full relative transition-colors ${VOL_CONFIG[key].active ? 'bg-blue-600' : 'bg-zinc-800'}" id="tog-${key}">
                         <div class="absolute top-0.5 left-0.5 w-2 h-2 bg-white rounded-full transition-transform ${VOL_CONFIG[key].active ? 'translate-x-3' : ''}" id="dot-${key}"></div>
@@ -338,7 +366,7 @@
             VOL_CONFIG[key].active = !VOL_CONFIG[key].active;
             volSeriesMap[key].applyOptions({ visible: VOL_CONFIG[key].active });
             document.getElementById(`txt-${key}`).className = `text-xs ${VOL_CONFIG[key].active ? 'text-zinc-200' : 'text-zinc-600'}`;
-            document.getElementById(`tog-${key}`).className = `w-6 h-3 rounded-full relative ${VOL_CONFIG[key].active ? 'bg-blue-600' : 'bg-zinc-800'}`;
+            document.getElementById(`tog-${key}`).className = `w-6 h-3 rounded-full relative transition-colors ${VOL_CONFIG[key].active ? 'bg-blue-600' : 'bg-zinc-800'}`;
             document.getElementById(`dot-${key}`).className = `absolute top-0.5 left-0.5 w-2 h-2 bg-white rounded-full transition-transform ${VOL_CONFIG[key].active ? 'translate-x-3' : ''}`;
         };
 
