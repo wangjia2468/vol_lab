@@ -91,10 +91,10 @@
                     <div class="text-[10px] text-zinc-500 mb-1 tracking-widest uppercase">Terminal Status</div>
                     <div id="status-text" class="jetbrains text-[11px] text-zinc-400">Waiting for selection...</div>
                 </div>
-                <!-- 验证更新的标记 -->
+                <!-- 验证更新的标记：手动设置代码更新时间 -->
                 <div class="px-1 flex justify-between items-center text-[9px] text-zinc-600 font-mono uppercase tracking-tighter">
-                    <span>Build: v1.0.1</span>
-                    <span>Last Sync: 2026-01-19</span>
+                    <span>Build: v1.0.3</span>
+                    <span id="last-sync-time">Last Sync: 2026-01-19 08:11</span>
                 </div>
             </div>
         </aside>
@@ -168,7 +168,9 @@
         const VOL_CONFIG = {
             atmIV: { color: '#60a5fa', label: '平值IV', active: true },
             iVix: { color: '#f87171', label: 'VIX', active: true },
+            hv5: { color: '#84cc16', label: 'HV5', active: false },
             hv20: { color: '#fbbf24', label: 'HV20', active: true },
+            hv30: { color: '#ec4899', label: 'HV30', active: false },
             hv60: { color: '#a78bfa', label: 'HV60', active: false },
             rv20: { color: '#2dd4bf', label: 'RV20', active: false }
         };
@@ -235,6 +237,8 @@
             const statusText = document.getElementById('status-text');
             const indicator = document.getElementById('data-source-indicator');
 
+            // 此处不再动态更新 last-sync-time，保持 HTML 中的代码提交时间
+
             try {
                 statusLabel.innerText = "FETCHING: " + contract;
                 indicator.className = "w-2 h-2 bg-blue-500 rounded-full animate-pulse";
@@ -277,15 +281,31 @@
             chart.timeScale().fitContent();
         }
 
+        // 优化模拟引擎：修复阴线过多的问题，增加真实涨跌逻辑
         function generateMockData() {
             const count = 150; const data = []; let price = 3900; const now = Math.floor(Date.now() / 1000);
             for (let i = 0; i < count; i++) {
                 const time = now - (count - i) * 86400;
-                const close = price + (Math.random() - 0.5) * 40;
-                price = close;
+                
+                // 真正的随机游走：涨跌概率均等
+                const change = (Math.random() - 0.5) * 45; 
+                const open = price;
+                const close = open + change;
+                const high = Math.max(open, close) + Math.random() * 12;
+                const low = Math.min(open, close) - Math.random() * 12;
+                
+                price = close; 
+
                 data.push({
-                    time, open: close-4, high: close+8, low: close-12, close,
-                    atmIV: 14 + Math.sin(i/10)*6, iVix: 15, hv20: 13, hv60: 14, rv20: 12, pcr: 0.85
+                    time, open, high, low, close,
+                    atmIV: 14 + Math.sin(i/10)*6, 
+                    iVix: 15 + Math.cos(i/12)*4, 
+                    hv5: 12 + Math.random()*8,
+                    hv20: 13 + Math.sin(i/15)*5, 
+                    hv30: 14 + Math.cos(i/20)*4,
+                    hv60: 15 + Math.sin(i/30)*2, 
+                    rv20: 12 + Math.random()*3, 
+                    pcr: 0.85 + (Math.random()-0.5)*0.2
                 });
             }
             return data;
@@ -363,4 +383,3 @@
     </script>
 </body>
 </html>
-
